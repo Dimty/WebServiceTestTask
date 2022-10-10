@@ -9,30 +9,46 @@ namespace WebServiceTestTask
     public class MessageSender
     {
         private readonly string _sender;
-        private SmtpClient _client;
+        private SmtpClient? _client;
+
         /// <summary>
         /// The <see cref="SmtpClient">client</see> responsible for sending messages is initialized
         /// in the constructor.
         /// </summary>
         /// <param name="jsonPath">the path to the mail configuration file</param>
         /// <param name="mailDomain"><see cref="MailDomain"></see></param>
-        public MessageSender(string jsonPath,MailDomain mailDomain)
+        public MessageSender(string jsonPath, MailDomain mailDomain)
         {
             var configuration =
                 new ConfigurationBuilder().AddJsonFile(jsonPath, true).Build();
+
             _sender = configuration[mailDomain + ":login"];
-            InitSmtpClient(configuration,mailDomain);
+            InitSmtpClient(configuration, mailDomain);
         }
+
         //TODO: после подкл бд заменить строку на нормальные данные
-        public void Mailing(string[] addresses)
+        public void Mailing(Message message)
         {
-            foreach (var item in addresses)
+            var mess = CreateMessage(message);
+            //TODO: возвращать статус  
+            foreach (var item in message.recipients)
             {
-                var mess = CreateMessage(item);
-                _client.Send(mess);
+                mess.To.Add(item);
             }
+
+            _client?.Send(mess);
         }
-        private void InitSmtpClient(IConfiguration configuration,MailDomain mailDomain)
+
+        private MailMessage CreateMessage(Message mess)
+        {
+            MailMessage message = new MailMessage();
+            message.From = new MailAddress(_sender);
+            message.Subject = mess.subject;
+            message.Body = mess.body;
+            return message;
+        }
+
+        private void InitSmtpClient(IConfiguration configuration, MailDomain mailDomain)
         {
             _client = new SmtpClient();
             _client.EnableSsl = true;
@@ -46,12 +62,5 @@ namespace WebServiceTestTask
                 Password = configuration[mailDomain + ":password"]
             };
         }
-        private MailMessage CreateMessage(string mess)
-        {
-            MailMessage message = new MailMessage(_sender,mess);
-            message.Body = mess;
-            return message;
-        }
     }
-    
 }
