@@ -18,7 +18,7 @@
         public string? body { get; set; }
         /// <summary>
         /// Property <c>recipients</c> sets or gets
-        /// recipients of the message body from the subject
+        /// recipients of the message body from the subject.
         /// </summary>
         public string[]? recipients { get; set; }
     }

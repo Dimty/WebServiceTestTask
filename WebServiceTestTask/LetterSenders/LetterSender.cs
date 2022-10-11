@@ -13,11 +13,7 @@ namespace WebServiceTestTask
         private readonly string _configPath = "appsettings.Mail.json";
         private SmtpClient? _client;
         protected MailDomain _domain;
-
-        /// <summary>
-        /// The <see cref="SmtpClient">client</see> responsible for sending messages is initialized
-        /// in the constructor.
-        /// </summary>
+        
         protected LetterSender()
         {
             var configuration =
@@ -28,10 +24,10 @@ namespace WebServiceTestTask
         }
 
         /// <summary>
-        /// 
+        /// Sends a letter to the recipients.
         /// </summary>
-        /// <param name="letterPostRequest"></param>
-        /// <returns></returns>
+        /// <param name="letterPostRequest">Letter to send</param>
+        /// <returns>The status of sending the letter.</returns>
         public LetterPostResponseStatus Mailing(LetterPostRequest letterPostRequest)
         {
             var status = new LetterPostResponseStatus();
@@ -56,10 +52,10 @@ namespace WebServiceTestTask
         }
 
         /// <summary>
-        /// 
+        /// Checks the data of the letter for correctness.
         /// </summary>
         /// <param name="letter"></param>
-        /// <returns></returns>
+        /// <returns>The status of the email verification.</returns>
         public LetterPostResponseStatus CheckLetterRequest(LetterPostRequest letter)
         {
             var status = new LetterPostResponseStatus();

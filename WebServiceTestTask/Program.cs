@@ -2,7 +2,6 @@ using System.Text.Json;
 using WebServiceTestTask;
 using WebServiceTestTask.PostgresContext;
 
-
 string exceptionResponse = "An error occurred while processing the request";
 
 var builder = WebApplication.CreateBuilder(args);
