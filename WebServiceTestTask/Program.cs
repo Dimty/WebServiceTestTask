@@ -2,46 +2,48 @@ using System.Text.Json;
 using WebServiceTestTask;
 using WebServiceTestTask.PostgresContext;
 
+
+string exceptionResponse = "An error occurred while processing the request";
+
 var builder = WebApplication.CreateBuilder(args);
 
-var sender = new MessageSender("appsettings.Mail.json",MailDomain.Gmail);
+builder.Services.AddSingleton<MessagesDbContext>();
 
-var dbContext = new MessagesContext();
+builder.Services.AddSingleton<LetterSender, GmailSender>();
 
 var app = builder.Build();
 
-var jsonSerializerOptions = new JsonSerializerOptions { Converters = { new DateOnlyJsonConverter() } };
+var jsonSerializerOptions = new JsonSerializerOptions {Converters = {new DateOnlyJsonConverter()}};
 
-app.MapGet("/api/mails", () => 
-    JsonSerializer.Serialize(dbContext.MessageProperties, jsonSerializerOptions));
-
-app.MapPost("/api/mails", ((Message message) =>
+app.MapGet("/api/mails", () =>
 {
-    sender.Mailing(message);
-    var mess = new MessageProperty()
-    {
-        Subject = message.subject,
-        Body = message.body,
-        DateOfCreation = DateOnly.FromDateTime(DateTime.Now),
-        Result = Result.OK,
-        Recipients = message.recipients,
-        FailedMessage = ""
-    };
-    
-    dbContext.Add(mess);
+    var db = app.Services.GetService<MessagesDbContext>();
+    return JsonSerializer.Serialize(db?.MessageProperties, jsonSerializerOptions);
+});
 
-    SaveChanges();
-    //TODO: создать сообщение и отправить его
-    //TODO: внести записть в бд
+app.MapPost("/api/mails", ((LetterPostRequest message) =>
+{
+    var sender = app.Services.GetService<LetterSender>();
+    var db = app.Services.GetService<MessagesDbContext>();
+
+    var letterStatus = sender?.CheckLetterRequest(message);
+
+    if (letterStatus?.Status == Result.OK)
+    {
+        letterStatus = sender?.Mailing(message);
+        if (letterStatus?.Status == Result.OK)
+        {
+            db.SaveMessage(message, letterStatus);
+            return Results.Ok();
+        }
+
+        letterStatus.StatusCode = 520;
+    }
+    else letterStatus.StatusCode = StatusCodes.Status400BadRequest;
+
+    db.SaveMessage(message, letterStatus);
+    return Results.Problem(exceptionResponse, letterStatus.Description,letterStatus.StatusCode);
 }));
 
-app.Map("/",async (context) =>
-{
-    await context.Response.SendFileAsync("wwwroot/index.html");
-});
+app.Map("/", async (context) => { await context.Response.SendFileAsync("wwwroot/index.html"); });
 app.Run();
-
-async Task SaveChanges()
-{
-    await dbContext.SaveChangesAsync();
-}

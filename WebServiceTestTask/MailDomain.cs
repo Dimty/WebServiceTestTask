@@ -5,12 +5,10 @@
     /// This enum contains all available mail domains.
     /// <list type="butten">
     ///<item>
-    ///<term>Gmail:</term>
-    /// <description>for gmail</description>
+    ///<term>Gmail</term>
     /// </item>
     /// <item>
     ///<term>EmailRu</term>
-    /// <description>for email</description>
     /// </item>
     /// </list>
     /// </summary>
