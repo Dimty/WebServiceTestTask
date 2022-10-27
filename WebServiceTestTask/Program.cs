@@ -14,7 +14,7 @@ builder.Services.AddDbContext<MessagesDbContext>(options =>
 
 builder.Services.Configure<MailOption>(builder.Configuration.GetSection(MailOption.Mails + ":Gmail"));
 
-builder.Services.AddSingleton<LetterSender>();
+builder.Services.AddTransient<LetterSender>();
 
 var app = builder.Build();
 
@@ -25,6 +25,7 @@ app.MapGet("/api/mails", (MessagesDbContext context, HttpContext resp) =>
 
 app.MapPost("/api/mails", async (LetterPostRequest message, LetterSender sender, MessagesDbContext db) =>
 {
+    //TODO: change data validation
     var letterStatus = sender?.CheckLetterRequest(message);
 
     if (letterStatus?.Status == Result.OK)
