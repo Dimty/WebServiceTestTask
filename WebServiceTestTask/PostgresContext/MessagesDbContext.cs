@@ -9,10 +9,17 @@ namespace WebServiceTestTask
     public partial class MessagesDbContext : DbContext
     {
         static MessagesDbContext()=> NpgsqlConnection.GlobalTypeMapper.MapEnum<PostgresContext.Result>();
-        public MessagesDbContext() { }
+
+        public MessagesDbContext()
+        {
+            Database.EnsureCreated();
+        }
 
         public MessagesDbContext(DbContextOptions<MessagesDbContext> options)
-            : base(options) { }
+            : base(options)
+        {
+            Database.EnsureCreated();
+        }
 
         public virtual DbSet<MessageProperty> MessageProperties { get; set; }
         
@@ -32,7 +39,7 @@ namespace WebServiceTestTask
             modelBuilder.Entity<MessageProperty>(entity =>
             {
                 entity.ToTable("messageProperties");
-
+                
                 entity.Property(e => e.Id)
                     .HasColumnName("id")
                     .UseIdentityAlwaysColumn();
@@ -49,15 +56,15 @@ namespace WebServiceTestTask
         /// </summary>
         /// <param name="message">Message to save</param>
         /// <param name="status">Message status</param>
-        public async Task SaveMessage(LetterPostRequest message,LetterPostResponseStatus status)
+        public async Task SaveMessageAsync(LetterPostRequest message,LetterPostResponseStatus status)
         {
             var mess = new MessageProperty()
             {
-                Subject = message.subject,
-                Body = message.body,
+                Subject = message.Subject,
+                Body = message.Body,
                 DateOfCreation = DateOnly.FromDateTime(DateTime.Now),
                 Result =  status.Status,
-                Recipients = message.recipients,
+                Recipients = message.Recipients,
                 FailedMessage = status.Description
             };
             Add(mess);

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using WebServiceTestTask;
 using WebServiceTestTask.PostgresContext;
 
@@ -6,25 +7,24 @@ string exceptionResponse = "An error occurred while processing the request";
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<MessagesDbContext>();
+string connection = builder.Configuration.GetConnectionString("MessagesDbContext");
 
-builder.Services.AddSingleton<LetterSender, GmailSender>();
+builder.Services.AddDbContext<MessagesDbContext>(options =>
+    options.UseNpgsql(connection ?? throw new InvalidOperationException("Connection string 'WebAppMVCContext' not found.")));
+
+builder.Services.Configure<MailOption>(builder.Configuration.GetSection(MailOption.Mails + ":Gmail"));
+
+builder.Services.AddSingleton<LetterSender>();
 
 var app = builder.Build();
 
 var jsonSerializerOptions = new JsonSerializerOptions {Converters = {new DateOnlyJsonConverter()}};
 
-app.MapGet("/api/mails", () =>
-{
-    var db = app.Services.GetService<MessagesDbContext>();
-    return JsonSerializer.Serialize(db?.MessageProperties, jsonSerializerOptions);
-});
+app.MapGet("/api/mails", (MessagesDbContext context, HttpContext resp) =>
+    resp.Response.WriteAsJsonAsync(context.MessageProperties, jsonSerializerOptions));
 
-app.MapPost("/api/mails", ((LetterPostRequest message) =>
+app.MapPost("/api/mails", async (LetterPostRequest message, LetterSender sender, MessagesDbContext db) =>
 {
-    var sender = app.Services.GetService<LetterSender>();
-    var db = app.Services.GetService<MessagesDbContext>();
-
     var letterStatus = sender?.CheckLetterRequest(message);
 
     if (letterStatus?.Status == Result.OK)
@@ -32,7 +32,7 @@ app.MapPost("/api/mails", ((LetterPostRequest message) =>
         letterStatus = sender?.Mailing(message);
         if (letterStatus?.Status == Result.OK)
         {
-            db.SaveMessage(message, letterStatus);
+            await db.SaveMessageAsync(message, letterStatus);
             return Results.Ok();
         }
 
@@ -40,9 +40,8 @@ app.MapPost("/api/mails", ((LetterPostRequest message) =>
     }
     else letterStatus.StatusCode = StatusCodes.Status400BadRequest;
 
-    db.SaveMessage(message, letterStatus);
-    return Results.Problem(exceptionResponse, letterStatus.Description,letterStatus.StatusCode);
-}));
+    await db.SaveMessageAsync(message, letterStatus);
+    return Results.Problem(exceptionResponse, letterStatus.Description, letterStatus.StatusCode);
+});
 
-app.Map("/", async (context) => { await context.Response.SendFileAsync("wwwroot/index.html"); });
 app.Run();

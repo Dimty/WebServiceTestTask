@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Mail;
+using Microsoft.Extensions.Options;
 using WebServiceTestTask.PostgresContext;
 
 namespace WebServiceTestTask
@@ -7,20 +8,15 @@ namespace WebServiceTestTask
     /// <summary>
     /// This class is engaged in creating and sending messages.
     /// </summary>
-    public abstract class LetterSender
+    public class LetterSender
     {
-        private readonly string _sender;
-        private readonly string _configPath = "appsettings.Mail.json";
-        private SmtpClient? _client;
-        protected MailDomain _domain;
-        
-        protected LetterSender()
-        {
-            var configuration =
-                new ConfigurationBuilder().AddJsonFile(_configPath, true).Build();
+        private readonly SmtpClient? _client= new();
 
-            _sender = configuration[_domain + ":login"];
-            InitSmtpClient(configuration, _domain);
+        private readonly MailOption _option;
+        public LetterSender(IOptions<MailOption> options)
+        {
+            _option = options.Value;
+            InitSmtpClient();
         }
 
         /// <summary>
@@ -30,15 +26,16 @@ namespace WebServiceTestTask
         /// <returns>The status of sending the letter.</returns>
         public LetterPostResponseStatus Mailing(LetterPostRequest letterPostRequest)
         {
+            var obj = new object();
             var status = new LetterPostResponseStatus();
             try
             {
                 var mess = CreateMessage(letterPostRequest);
-                foreach (var item in letterPostRequest.recipients)
+                foreach (var item in letterPostRequest.Recipients)
                 {
                     mess.To.Add(item);
                 }
-                _client?.Send(mess);
+                _client?.SendAsync(mess,obj);
             }
             catch (Exception e)
             {
@@ -59,9 +56,9 @@ namespace WebServiceTestTask
         public LetterPostResponseStatus CheckLetterRequest(LetterPostRequest letter)
         {
             var status = new LetterPostResponseStatus();
-            if (string.IsNullOrWhiteSpace(letter.subject) ||
-                string.IsNullOrWhiteSpace(letter.body) ||
-                letter.recipients is null)
+            if (string.IsNullOrWhiteSpace(letter.Subject) ||
+                string.IsNullOrWhiteSpace(letter.Body) ||
+                letter.Recipients is null)
             {
                 status.Description = "One or more incoming parameters are missing";
                 status.Status = Result.Failed;
@@ -74,27 +71,24 @@ namespace WebServiceTestTask
         private MailMessage CreateMessage(LetterPostRequest mess)
         {
             MailMessage message = new MailMessage();
-            message.From = new MailAddress(_sender);
-            message.Subject = mess.subject;
-            message.Body = mess.body;
+            message.From = new MailAddress(_option.Login);
+            message.Subject = mess.Subject;
+            message.Body = mess.Body;
             return message;
         }
 
-        private void InitSmtpClient(IConfiguration configuration, MailDomain mailDomain)
+        private void InitSmtpClient()
         {
-            _client = new SmtpClient();
             _client.EnableSsl = true;
-            _client.Host = configuration[mailDomain + ":host"];
-            _client.Port = int.Parse(configuration[mailDomain + ":port"]);
+            _client.Host = _option.Host;
+            _client.Port = _option.Port;
             _client.UseDefaultCredentials = false;
             _client.DeliveryMethod = SmtpDeliveryMethod.Network;
             _client.Credentials = new NetworkCredential()
             {
-                UserName = _sender,
-                Password = configuration[mailDomain + ":password"]
+                UserName = _option.Login,
+                Password = _option.Password
             };
         }
-
-        protected abstract void SetDomain();
     }
 }
