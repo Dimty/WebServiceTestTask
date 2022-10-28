@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 string connection = builder.Configuration.GetConnectionString("MessagesDbContext");
 
 builder.Services.AddDbContext<MessagesDbContext>(options =>
-    options.UseNpgsql(connection ?? throw new InvalidOperationException("Connection string 'WebAppMVCContext' not found.")));
+    options.UseNpgsql(connection ?? throw new InvalidOperationException("Connection string 'MessagesDbContext' not found.")));
 
 builder.Services.Configure<MailOption>(builder.Configuration.GetSection(MailOption.Mails + ":Gmail"));
 
